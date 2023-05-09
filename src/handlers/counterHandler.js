@@ -1,11 +1,11 @@
 import AudioHandler from "./audioHandler";
 
 export default class CounterHandler {
-  constructor(ctxPose) {
+  constructor(pose) {
     this.count = 0;
     this.rules = null;
-    this.ctxPose = ctxPose;
-    this.lastStage = {};
+    this.pose = pose;
+    this.last = {};
     this.nextStage = {};
     this.currStage = {};
     this.sumObsPoints = 0;
@@ -37,7 +37,7 @@ export default class CounterHandler {
       nameStage: "None",
       sum: 0,
       detail: {},
-    }); // Last stage (other);
+    }); 
   };
 
   setup = (rulesConfig) => {
@@ -58,19 +58,18 @@ export default class CounterHandler {
 
   determineCurrStage = () => {
     if (this.obsStages.length !== 0) {
-      // Sort Observation Stages by sum / number of anglepoint each stage
-      const sortObsStages = [...this.obsStages].sort((a, b) => b.sum - a.sum);
+      const stages = [...this.obsStages].sort((a, b) => b.sum - a.sum);
       const statusStage =
-        sortObsStages[0].sum === this.sumObsPoints ? "FULL" : "PARTIAL";
+        stages[0].sum === this.sumObsPoints ? "FULL" : "PARTIAL";
       this.currStage = {
         statusStage,
-        idStage: sortObsStages[0].idStage,
-        nameStage: sortObsStages[0].nameStage,
+        idStage: stages[0].idStage,
+        nameStage: stages[0].nameStage,
       };
       
       if (
         statusStage === "FULL" &&
-        this.currStage.nameStage !== this.lastStage.nameStage &&
+        this.currStage.nameStage !== this.last.nameStage &&
         this.currStage.idStage === this.rules.nameStage.length - 1
       ) {
         this.count += 1;
@@ -80,17 +79,17 @@ export default class CounterHandler {
       }
       if (
         statusStage === "FULL" &&
-        sortObsStages[0].nameStage !== "None" &&
-        (Object.keys(this.lastStage).length === 0 ||
-          this.lastStage.nameStage !== sortObsStages[0].nameStage)
+        stages[0].nameStage !== "None" &&
+        (Object.keys(this.last).length === 0 ||
+          this.last.nameStage !== stages[0].nameStage)
       ) {
-        this.lastStage = {
-          idStage: sortObsStages[0].idStage,
-          nameStage: sortObsStages[0].nameStage,
+        this.last = {
+          idStage: stages[0].idStage,
+          nameStage: stages[0].nameStage,
         };
         const nextIdStage =
-          this.lastStage.idStage + 1 !== this.rules.nameStage.length
-            ? this.lastStage.idStage + 1
+          this.last.idStage + 1 !== this.rules.nameStage.length
+            ? this.last.idStage + 1
             : 0;
         this.nextStage = {
           idStage: nextIdStage,
@@ -132,61 +131,60 @@ export default class CounterHandler {
   };
 
   detectAnglesAndStages = (keypoints, classPredict) => {
-    if (this.rules && this.ctxPose && classPredict === this.rules.nameWorkout) {
+    if (this.rules && this.pose && classPredict === this.rules.nameWorkout) {
       keypoints.forEach((oriPoint, idx) => {
         if (!(idx in this.rules.anglePoint)) return;
         const { spouseIdx, rangeAngle } = this.rules.anglePoint[idx];
-        const spousePointA = keypoints[spouseIdx[0]];
-        const spousePointB = keypoints[spouseIdx[1]];
+        const point1 = keypoints[spouseIdx[0]];
+        const point2 = keypoints[spouseIdx[1]];
         let gradientLineA = Math.atan2(
-          spousePointA.y - oriPoint.y,
-          spousePointA.x - oriPoint.x
+          point1.y - oriPoint.y,
+          point1.x - oriPoint.x
         );
         let gradientLineB = Math.atan2(
-          spousePointB.y - oriPoint.y,
-          spousePointB.x - oriPoint.x
+          point2.y - oriPoint.y,
+          point2.x - oriPoint.x
         );
-        let degAngle =
+        let angle =
           parseInt(
             ((gradientLineB - gradientLineA) / Math.PI) * 180 + 360,
             10
           ) % 360;
 
-        this.ctxPose.moveTo(oriPoint.x, oriPoint.y);
+        this.pose.moveTo(oriPoint.x, oriPoint.y);
 
-        if (degAngle > 180) {
-          degAngle = 360 - degAngle;
+        if (angle > 180) {
+          angle = 360 - angle;
           [gradientLineA, gradientLineB] = [gradientLineB, gradientLineA];
         }
 
-        this.ctxPose.arc(
+        this.pose.arc(
           oriPoint.x,
           oriPoint.y,
           20,
           gradientLineA,
           gradientLineB
         );
-        this.ctxPose.fill();
+        this.pose.fill();
 
-        this.listAngles.push([degAngle, oriPoint.x + 5, oriPoint.y]);
-        // Check angle for classify stage
+        this.listAngles.push([angle, oriPoint.x + 5, oriPoint.y]);
         this.sumObsPoints += 1;
-        let isStageNone = true;
+        let isNone = true;
         rangeAngle.forEach((range, idStage) => {
-          if (degAngle >= range.min && degAngle <= range.max) {
+          if (angle >= range.min && angle <= range.max) {
             this.obsStages[idStage].sum += 1;
             this.obsStages[idStage].detail[idx] = {
               name: keypoints[idx].name,
-              angle: degAngle,
+              angle: angle,
             };
-            isStageNone = false;
+            isNone = false;
           }
         });
-        if (isStageNone) {
+        if (isNone) {
           this.obsStages[this.obsStages.length - 1].sum += 1;
           this.obsStages[this.obsStages.length - 1].detail[idx] = {
             name: keypoints[idx].name,
-            angle: degAngle,
+            angle: angle,
           };
         }
       });

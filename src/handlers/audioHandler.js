@@ -1,18 +1,15 @@
 export default class AudioHandler {
   constructor(audioConfig) {
     this.src = audioConfig.src;
-    this.audioCtx = null;
-    this.audioBuffer = null;
+    this.ctx = null;
+    this.buffer = null;
     this.isLoaded = false;
   }
 
   setup = async () => {
-    // For handle multiple audio and multiple times play
-    // Using Audio Context rather than HTML5 Audio Interface
-    // To boost performance based on fps (tested: significantly more stable)
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    this.audioCtx = new AudioCtx();
-    this.audioBuffer = await this.getFile();
+    this.ctx = new AudioCtx();
+    this.buffer = await this.getFile();
   };
 
   getFile = async () => {
@@ -21,16 +18,16 @@ export default class AudioHandler {
       throw new Error(`HTTP error${resp.status}`);
     }
     const arrayBuffer = await resp.arrayBuffer();
-    const audioBuffer = await this.audioCtx.decodeAudioData(arrayBuffer);
+    const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
     this.isLoaded = true;
     return audioBuffer;
   };
 
-  play = () => {
-    if (this.audioCtx && this.audioBuffer) {
-      const bufferSource = this.audioCtx.createBufferSource();
-      bufferSource.buffer = this.audioBuffer;
-      bufferSource.connect(this.audioCtx.destination);
+  start = () => {
+    if (this.ctx && this.buffer) {
+      const bufferSource = this.ctx.createBufferSource();
+      bufferSource.buffer = this.buffer;
+      bufferSource.connect(this.ctx.destination);
       bufferSource.start();
     }
   };

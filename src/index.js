@@ -53,16 +53,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const bodyAboutElem = document.getElementById("bodyAboutBox");
   const helpOKBtnElem = document.getElementById("helpOKBtn");
 
-  const developerModeElem = document.getElementById("developerModeBox");
-  const imgDirectionSignElem = document.getElementById("imgDirectionSignBox");
-  const goAdviceBtnElem = document.getElementById("goAdviceBtn");
-  const adviceWrapElem = document.getElementById("adviceWrapBox");
-  const sliderAdviceElem = document.getElementById("sliderAdviceBox");
-  const sliderCameraElem = document.getElementById("sliderCameraBox");
-  const recordKeypointsBtnElem = document.getElementById("recordKeypointsBtn");
-  const pingRecordElem = document.getElementById("pingRecordBox");
-  const restartBtnElem = document.getElementById("restartBtn");
-
   let isFirstPlay = true;
   let isWebcamSecPlay = false;
   let widthRealVideo = 640;
@@ -74,23 +64,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     w: 16,
   };
 
-  const WOPose = new PoseHandler(webcamElem, cnvPoseElem);
+  const pose = new PoseHandler(webcamElem, cnvPoseElem);
   const WOTimer = new TimerHandler();
   const WOScore = new ScoreHandler();
-  const WOSettings = new SettingsHandler();
-
-  WOPose.additionalElem = {
-    countElem,
-    adviceWrapElem,
-    confidenceElem,
-    imgDirectionSignElem,
-  };
-
-  // eslint-disable-next-line no-underscore-dangle
-  WOPose.camHandler._addVideoConfig = {
-    width: widthRealVideo,
-    height: heightRealVideo,
-  };
+  const setting = new SettingsHandler();
 
   const resizeHandler = () => {
     widthResult = window.innerWidth > 1280 ? 1280 : window.innerWidth;
@@ -116,151 +93,30 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    WOPose.scaler = {
+    pose.scaler = {
       w: widthResult / widthRealVideo,
       h: heightResult / heightRealVideo,
     };
   };
+ 
 
-  // First run to auto adjust screen
-  resizeHandler();
-
-  window.addEventListener("resize", () => {
-    resizeHandler();
-  });
-
-  // Render current settings and show to choose new settings
-  const getHTMLChooseWO = (data, isSettings) => {
-    // isSettings (true) to Advance Settings segment
-    let htmlChooseWO = "";
-    htmlChooseWO += isSettings
-      ? `
-      <div class="mb-3">What workout do you want?</div>
-      `
-      : `
-      <div class="flex-1 overflow-y-auto flex flex-col items-center w-full">
-        <h1 class="font-bold text-2xl mt-3 mb-5">AI Workout Assistant</h1>
-        <div class="relative w-full flex flex-row justify-center items-center">
-          <img
-            src="./img/undraw_pilates_gpdb.svg"
-            alt="Ilustration of Workout"
-            class="w-1/2"
-          />
-          <div id="chooseHelpBtn" class="absolute top-0 bg-yellow-500 text-white font-bold py-1 px-2 rounded-lg cursor-pointer hover:bg-amber-500">Need Help ?</div>
-        </div>
-        <div class="mt-5 mb-3">What workout do you want?</div>
-      `;
-
-    data.nameWorkout.forEach((nameWO, idx) => {
-      if (idx === 0) {
-        htmlChooseWO += `<fieldset class="grid grid-cols-2 gap-3 w-full">`;
-      }
-      htmlChooseWO += `
-        <label
-          for="${isSettings ? `settingsName${idx}` : `chooseName${idx}`}"
-          class="flex cursor-pointer items-center pl-4 border border-gray-200 rounded-lg"
-        >
-          <input
-            id="${isSettings ? `settingsName${idx}` : `chooseName${idx}`}"
-            type="radio"
-            value="${data.slugWorkout[idx]}"
-            name="${isSettings ? "settingsNameWO" : "chooseNameWO"}"
-            class="w-4 h-4 text-yellow-600"
-            required
-          />
-          <span class="w-full py-4 ml-2 text-sm font-medium text-gray-600"
-            >${nameWO}</span
-          >
-        </label>
-        `;
-      if (idx === data.nameWorkout.length - 1) {
-        htmlChooseWO += `</fieldset>`;
-      }
-    });
-
-    htmlChooseWO += `<div class="${
-      isSettings ? "mt-3" : "mt-5"
-    } mb-3">How long?</div>`;
-
-    data.duration.forEach((duration, idx) => {
-      if (idx === 0) {
-        htmlChooseWO += `<fieldset class="grid grid-cols-2 gap-3 w-full">`;
-      }
-      htmlChooseWO += `
-        <label
-          for="${
-            isSettings ? `settingsDuration${idx}` : `chooseDuration${idx}`
-          }"
-          class="flex cursor-pointer items-center pl-4 border border-gray-200 rounded-lg"
-        >
-          <input
-            id="${
-              isSettings ? `settingsDuration${idx}` : `chooseDuration${idx}`
-            }"
-            type="radio"
-            value="${duration}"
-            name="${isSettings ? "settingsDurationWO" : "chooseDurationWO"}"
-            class="w-4 h-4 text-yellow-600"
-            required
-          />
-          <span class="w-full py-4 ml-2 text-sm font-medium text-gray-600"
-            >${duration}</span
-          >
-        </label>
-        `;
-      if (idx === data.duration.length - 1) {
-        htmlChooseWO += `</fieldset>`;
-      }
-    });
-
-    htmlChooseWO += isSettings
-      ? ""
-      : `
-        </div>
-        <button
-          id="submitWOBtn"
-          type="submit"
-          class="w-full bg-yellow-500 text-white py-2 text-xl font-bold rounded-lg mb-2 mt-5 hover:bg-amber-500"
-        >
-          Next
-        </button>
-      `;
-
-    return htmlChooseWO;
-  };
-
-  // Ask to get permission to access camera
+  
   const getAccessCam = async () => {
-    if (!webcamElem.paused && WOPose.isLoop) return;
+    if (!webcamElem.paused && pose.isLoop) return;
     loaderElem.style.display = "flex";
-    // Try get permission as well as stream
-    await WOPose.camHandler
+   
+    await pose.camHandler
       .start()
       .then(() => {
-        // Save settings if got access camera to use in future (reload)
-        WOSettings.change({
+        
+        setting.change({
           isAccessCamera: true,
         });
         loaderElem.style.display = "none";
         accessCamElem.style.display = "none";
       })
-      .catch((err) => {
-        console.log("Permission Denied: Webcam Access is Not Granted");
-        console.error(err);
-        // eslint-disable-next-line no-alert
-        alert("Webcam Access is Not Granted, Try to Refresh Page");
-      });
   };
 
-  // Update and show current time
-  const setCurrTime = () => {
-    const currTime = WOTimer.getCurrTime();
-    timerElem.innerHTML = `${`0${currTime.minutes}`.slice(
-      -2
-    )}:${`0${currTime.seconds}`.slice(-2)}`;
-  };
-
-  // Get configuration
   const setupChangeWO = async (path) => {
     await fetch(path)
       .then((resp) => {
@@ -269,63 +125,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         return resp.json();
       })
-      .then(async (data) => {
-        WOPose.counter.setup(data.rulesCountConfig);
-        const title = `${data.rulesCountConfig.nameWorkout} - ${WOSettings.DBWOSettings.currDuration}`;
-        titleWOElem.innerText = title;
-        resultTitleElem.innerText = title;
-
-        // Setup timer to first play
-        WOTimer.remove();
-        WOTimer.setup({
-          interval: 1000,
-          duration: WOPose.isVideoMode
-            ? Math.floor(webcamElem.duration)
-            : 60 * +WOSettings.DBWOSettings.currDuration.split(" ")[0],
-          type: "DEC",
-          firstDelayDuration: WOPose.isVideoMode ? 0 : 3,
-        });
-        WOTimer.isFirstDelay = !WOPose.isVideoMode;
-        setCurrTime();
-
-        // Setup and load pose detector (movenet or other)
-        await WOPose.setup(data.poseDetectorConfig)
-          .then(() => {
-            console.log("Detector Loaded");
-          })
-          .catch((e) => {
-            console.error(e);
-          });
-
-        // Setup and load classifier (tfjs model)
-        await WOPose.classifier
-          .setup(data.classifierConfig, {
-            width: widthRealVideo,
-            height: heightRealVideo,
-          })
-          .then(async () => {
-            console.log("Classifier Ready to Use");
-            chooseWOElem.style.display = "none";
-            if (WOSettings.DBWOSettings.isAccessCamera) {
-              // It still try to get access (auto) to check if disabled
-              if (!WOPose.isVideoMode) await getAccessCam();
-            } else {
-              loaderElem.style.display = "none";
-              accessCamElem.style.display = "flex";
-            }
-          })
-          .catch((e) => {
-            console.error(e);
-          });
-      })
-      .catch((e) => {
-        console.error(e);
-      });
+     
   };
-
-  // helpBtnElem.addEventListener("click", () => {
-  //   helpElem.style.display = "flex";
-  // });
 
   helpOKBtnElem.addEventListener("click", () => {
     helpElem.style.display = "none";
@@ -357,32 +158,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     WOTimer.setup({
       interval: 1000,
-      duration: WOPose.isVideoMode
+      duration: pose.isVideoMode
         ? Math.floor(webcamElem.duration)
-        : 60 * +WOSettings.DBWOSettings.currDuration.split(" ")[0],
+        : 60 * +setting.DBWOSettings.currDuration.split(" ")[0],
       type: "DEC",
-      firstDelayDuration: WOPose.isVideoMode ? 0 : 3,
+      firstDelayDuration: pose.isVideoMode ? 0 : 3,
     });
 
-    WOPose.counter.resetCount();
+    pose.counter.resetCount();
     countElem.innerText = "0";
 
-    WOTimer.isFirstDelay = !WOPose.isVideoMode;
-    if (WOPose.isVideoMode && webcamElem.currentTime !== 0) {
+    WOTimer.isFirstDelay = !pose.isVideoMode;
+    if (pose.isVideoMode && webcamElem.currentTime !== 0) {
       webcamElem.currentTime = 0;
       webcamElem.load();
     }
 
-    setCurrTime();
-    WOTimer.pause();
-    webcamElem.pause();
-    WOPose.isLoop = false;
-    isFirstPlay = true;
-    isWebcamSecPlay = true;
-    WOPose.counter.lastStage = {};
-    WOPose.counter.nextStage = {};
-
-    // Clear screen
     imgDirectionSignElem.style.display = "none";
     adviceWrapElem.style.display = "none";
     resumeBtnElem.style.display = "flex";
@@ -392,9 +183,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   recordKeypointsBtnElem.addEventListener("click", () => {
-    // Toggler for start and stop extract keypoints each frame
-    WOPose.isExtractKeypoints = !WOPose.isExtractKeypoints;
-    if (WOPose.isExtractKeypoints) {
+    pose.isExtractKeypoints = !pose.isExtractKeypoints;
+    if (pose.isExtractKeypoints) {
       pingRecordElem.classList.remove("bg-gray-500");
       pingRecordElem.classList.add("bg-red-500");
       pingRecordElem.children[0].style.display = "block";
@@ -402,7 +192,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       pingRecordElem.classList.remove("bg-red-500");
       pingRecordElem.classList.add("bg-gray-500");
       pingRecordElem.children[0].style.display = "none";
-      WOPose.DBHandler.saveToCSV();
+      pose.DBHandler.saveToCSV();
     }
   });
 
@@ -411,27 +201,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     scoresElem.style.display = "none";
   });
 
-  segJourneyBtnElem.addEventListener("click", () => {
-    // Show body journey element
-    if (bodyJourneyElem.style.display !== "none") return;
-    bodyBestScoreElem.style.display = "none";
-    bodyJourneyElem.style.display = "block";
-    segBestBtnElem.classList.remove("bg-amber-300", "text-gray-600");
-    segBestBtnElem.classList.add("bg-amber-200", "text-gray-400");
-    segJourneyBtnElem.classList.remove("bg-amber-200", "text-gray-400");
-    segJourneyBtnElem.classList.add("bg-amber-300", "text-gray-600");
-  });
-
-  segBestBtnElem.addEventListener("click", () => {
-    // Show body best score element
-    if (bodyBestScoreElem.style.display !== "none") return;
-    bodyJourneyElem.style.display = "none";
-    bodyBestScoreElem.style.display = "block";
-    segJourneyBtnElem.classList.remove("bg-amber-300", "text-gray-600");
-    segJourneyBtnElem.classList.add("bg-amber-200", "text-gray-400");
-    segBestBtnElem.classList.remove("bg-amber-200", "text-gray-400");
-    segBestBtnElem.classList.add("bg-amber-300", "text-gray-600");
-  });
 
   segSettingsWOBtnElem.addEventListener("click", () => {
     if (bodySettingsWOElem.style.display !== "none") return;
@@ -441,62 +210,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     segSettingsWOBtnElem.classList.add("bg-amber-300", "text-gray-600");
   });
 
-
-  settingsBtnElem.addEventListener("click", () => {
-    // Show modal / pop up settings element (choose WO & advance settings)
-    settingsElem.style.display = "flex";
-    // Get and show current settings
-    document.querySelector(
-      `input[value="${WOSettings.DBWOSettings.currWorkout}"][name="settingsNameWO"]`
-    ).checked = true;
-    document.querySelector(
-      `input[value="${WOSettings.DBWOSettings.currDuration}"][name="settingsDurationWO"]`
-    ).checked = true;
-    document.querySelector('input[name="settingsAEBox"]').checked =
-      WOSettings.DBWOSettings.isAudioEffect !== undefined
-        ? WOSettings.DBWOSettings.isAudioEffect
-        : true; // Default setting Audio Effect
-    document.querySelector('input[name="settingsFSBox"]').checked =
-      WOSettings.DBWOSettings.isFullscreen !== undefined
-        ? WOSettings.DBWOSettings.isFullscreen
-        : false; // Default setting Full Screen
-    document.querySelector('input[name="settingsFCBox"]').checked =
-      WOSettings.DBWOSettings.isFlipCamera !== undefined
-        ? WOSettings.DBWOSettings.isFlipCamera
-        : false; // Default setting Flip Camera
-    document.querySelector('input[name="settingsDSBox"]').checked =
-      WOSettings.DBWOSettings.isDirectionSign !== undefined
-        ? WOSettings.DBWOSettings.isDirectionSign
-        : true; // Default setting Direction Sign
-    document.querySelector('input[name="settingsDMBox"]').checked =
-      WOSettings.DBWOSettings.isDeveloperMode !== undefined
-        ? WOSettings.DBWOSettings.isDeveloperMode
-        : false; // Default setting Developer Mode
-  });
-
   const actionSettings = {
     currWorkoutDuration: async (data) => {
       loaderElem.style.display = "flex";
       delayElem.innerText = "";
       webcamElem.pause();
-      WOPose.isLoop = false;
+      pose.isLoop = false;
       isFirstPlay = true;
       isWebcamSecPlay = true;
-      WOPose.counter.lastStage = {};
-      WOPose.counter.nextStage = {};
+      pose.counter.lastStage = {};
+      pose.counter.nextStage = {};
 
       if (data.durationWO.isChange) {
         WOTimer.setup({
           interval: 1000,
-          duration: WOPose.isVideoMode
+          duration: pose.isVideoMode
             ? Math.floor(webcamElem.duration)
             : 60 * +data.durationWO.value.split(" ")[0],
           type: "DEC",
-          firstDelayDuration: WOPose.isVideoMode ? 0 : 3,
+          firstDelayDuration: pose.isVideoMode ? 0 : 3,
         });
 
         setCurrTime();
-        const title = `${WOPose.counter.rules.nameWorkout} - ${data.durationWO.value}`;
+        const title = `${pose.counter.rules.nameWorkout} - ${data.durationWO.value}`;
         titleWOElem.innerText = title;
         resultTitleElem.innerText = title;
       }
@@ -504,8 +240,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         await setupChangeWO(`./rules/${data.nameWO.value}.json`);
       }
 
-      WOTimer.isFirstDelay = !WOPose.isVideoMode;
-      if (WOPose.isVideoMode && webcamElem.currentTime !== 0) {
+      WOTimer.isFirstDelay = !pose.isVideoMode;
+      if (pose.isVideoMode && webcamElem.currentTime !== 0) {
         webcamElem.currentTime = 0;
         webcamElem.load();
       }
@@ -520,7 +256,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       loaderElem.style.display = "none";
     },
     isAudioEffect: (data) => {
-      WOPose.counter.isPlayAudStage = data;
+      pose.counter.isPlayAudStage = data;
       WOTimer.isPlayAudTimer = data;
     },
     isFullscreen: (data) => {
@@ -537,12 +273,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     isFlipCamera: (data) => {
       // Default (user for webcam) and auto change to "environment" if video
       const facingMode = data ? "environment" : "user";
-      WOPose.camHandler.flip(facingMode);
+      pose.camHandler.flip(facingMode);
     },
     isDirectionSign: (data) => {
       // Toggler to show direction sign
-      WOPose.isShowDirectionSign = data;
-      if (WOPose.isClassify) {
+      pose.isShowDirectionSign = data;
+      if (pose.isClassify) {
         imgDirectionSignElem.style.display = data ? "block" : "none";
       }
     },
@@ -560,32 +296,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const currDuration = document.querySelector(
       'input[name="settingsDurationWO"]:checked'
     ).value;
-    // const isAudioEffect = document.querySelector(
-    //   'input[name="settingsAEBox"]'
-    // ).checked;
-    // const isFullscreen = document.querySelector(
-    //   'input[name="settingsFSBox"]'
-    // ).checked;
-    // const isFlipCamera = document.querySelector(
-    //   'input[name="settingsFCBox"]'
-    // ).checked;
-    // const isDirectionSign = document.querySelector(
-    //   'input[name="settingsDSBox"]'
-    // ).checked;
-    // const isDeveloperMode = document.querySelector(
-    //   'input[name="settingsDMBox"]'
-    // ).checked;
-
-    // Send newest settings to check and get change
-    WOSettings.change(
+    setting.change(
       {
         currWorkout,
         currDuration,
-        // isAudioEffect,
-        // isFullscreen,
-        // isFlipCamera,
-        // isDirectionSign,
-        // isDeveloperMode,
       },
       actionSettings
     );
@@ -616,18 +330,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Init and try to load localStorage data scores
         WOScore.setup(data);
         // Init and try to load localStorage data settings
-        WOSettings.setup(data.settingsConfig, {
+        setting.setup(data.settingsConfig, {
           isFlipCamera: actionSettings.isFlipCamera,
           isDeveloperMode: actionSettings.isDeveloperMode,
         });
         if (
-          WOSettings.isGetPrevSettings &&
-          WOSettings.DBWOSettings.currWorkout &&
-          WOSettings.DBWOSettings.currWorkout !== "None"
+          setting.isGetPrevSettings &&
+          setting.DBWOSettings.currWorkout &&
+          setting.DBWOSettings.currWorkout !== "None"
         ) {
           loaderElem.style.display = "flex";
           await setupChangeWO(
-            `./rules/${WOSettings.DBWOSettings.currWorkout}.json`
+            `./rules/${setting.DBWOSettings.currWorkout}.json`
           );
         } else {
           chooseWOElem.style.display = "flex";
@@ -640,24 +354,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   await setupWOScore("./mock-data/workout.json");
-
-  // Just for initial (once run)
-  // It will be remove when replaced by new webcamElem
-  // Check: uploadVideoBtnElem
   webcamElem.addEventListener("loadeddata", () => {
-    if (!WOPose.isVideoMode) {
-      if (WOPose.isClassify) {
-        WOPose.isClassify = false;
+    if (!pose.isVideoMode) {
+      if (pose.isClassify) {
+        pose.isClassify = false;
       }
-      WOPose.isLoop = true;
+      pose.isLoop = true;
       sliderCameraElem.checked = true;
       if (isWebcamSecPlay) {
         isWebcamSecPlay = false;
       }
       delayElem.innerText = "";
       WOTimer.pause();
-      WOPose.counter.resetCount();
-      WOPose.drawPose();
+      pose.counter.resetCount();
+      pose.drawPose();
     }
   });
 
@@ -676,7 +386,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     ).value;
     if (event.submitter.id === "submitWOBtn") {
       // Change without action as initial run (first play)
-      WOSettings.change({
+      setting.change({
         currWorkout: workout,
         currDuration: duration,
       });
@@ -685,44 +395,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       await setupChangeWO(`./rules/${workout}.json`);
     }
   });
-
-  // Callback to update and show delay time
-  const delayCB = (time) => {
-    delayElem.innerText = time;
-  };
-  // Callback when delay time is finished
-  const finishDelayCB = () => {
-    delayElem.innerText = "";
-  };
-  // Callback to update and show current time
-  const timerCB = (time) => {
-    timerElem.innerText = `${`0${time.minutes}`.slice(
-      -2
-    )}:${`0${time.seconds}`.slice(-2)}`;
-  };
-  // Callback when timer is finished
+  
   const finishTimerCB = () => {
-    // Only save when not video mode
-    if (!WOPose.isVideoMode) {
+    if (!pose.isVideoMode) {
       WOScore.addNewData({
         id: +new Date(),
-        nameWorkout: WOPose.counter.rules.nameWorkout,
-        duration: WOSettings.DBWOSettings.currDuration,
-        repetition: WOPose.counter.count,
+        nameWorkout: pose.counter.rules.nameWorkout,
+        duration: setting.DBWOSettings.currDuration,
+        repetition: pose.counter.count,
         date: new Date().toLocaleString(),
       });
     }
     setCurrTime();
-    WOTimer.isFirstDelay = !WOPose.isVideoMode;
-    resultRepElem.innerText = WOPose.counter.count;
+    WOTimer.isFirstDelay = !pose.isVideoMode;
+    resultRepElem.innerText = pose.counter.count;
     WOTimer.start(delayCB, finishDelayCB, timerCB, finishTimerCB);
     WOTimer.pause();
     webcamElem.pause();
     isFirstPlay = true;
-    WOPose.isLoop = false;
-    WOPose.counter.resetCount();
-    WOPose.counter.lastStage = {};
-    WOPose.counter.nextStage = {};
+    pose.isLoop = false;
+    pose.counter.resetCount();
+    pose.counter.lastStage = {};
+    pose.counter.nextStage = {};
     resultElem.style.display = "flex";
     resumeBtnElem.style.display = "flex";
     restartBtnElem.style.display = "none";
@@ -731,10 +425,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     adviceWrapElem.style.display = "none";
   };
 
-  // Fired when timer is finished and try to restart with OK btn
   resultOKBtnElem.addEventListener("click", () => {
     resultElem.style.display = "none";
-    if (isFirstPlay && WOPose.isVideoMode) {
+    if (isFirstPlay && pose.isVideoMode) {
       webcamElem.pause();
       webcamElem.currentTime = 0;
       webcamElem.load();
@@ -744,19 +437,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Pause webcam or video
   pauseBtnElem.addEventListener("click", () => {
     WOTimer.pause();
     webcamElem.pause();
-    WOPose.isLoop = false;
+    pose.isLoop = false;
     resumeBtnElem.style.display = "flex";
     restartBtnElem.style.display = "flex";
     pauseBtnElem.style.display = "none";
   });
 
-  // Play or resume button for video and webcam
   resumeBtnElem.addEventListener("click", () => {
-    if (!isFirstPlay && !webcamElem.paused && WOPose.isLoop) return;
+    if (!isFirstPlay && !webcamElem.paused && pose.isLoop) return;
     pauseBtnElem.style.display = "flex";
     restartBtnElem.style.display = "none";
     resumeBtnElem.style.display = "none";
@@ -764,33 +455,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isFirstPlay) {
       isFirstPlay = false;
-      WOPose.isClassify = true;
+      pose.isClassify = true;
       WOTimer.start(delayCB, finishDelayCB, timerCB, finishTimerCB);
     }
 
     WOTimer.resume();
-    WOPose.isLoop = true;
+    pose.isLoop = true;
     webcamElem.play().then(() => {
-      if (!isWebcamSecPlay && firstPlay && !WOPose.isVideoMode) {
+      if (!isWebcamSecPlay && firstPlay && !pose.isVideoMode) {
         console.log("It run?");
         isWebcamSecPlay = true;
         // Return to stop redraw again (first play)
         return;
       }
-      WOPose.drawPose();
+      pose.drawPose();
     });
   });
 
   uploadVideoBtnElem.addEventListener("change", (event) => {
     if (event.target.files && event.target.files[0]) {
-      // Stop webcam first before replace with video
-      WOPose.camHandler.stop();
-      WOPose.isClassify = true;
-      WOPose.isLoop = false;
-      WOPose.isVideoMode = true;
+      pose.camHandler.stop();
+      pose.isClassify = true;
+      pose.isLoop = false;
+      pose.isVideoMode = true;
       webcamElem.pause();
-      // Remove current webcamElem to fix error pose detector
-      // during transition source webcam to video (it's async, not directly changing)
       webcamElem.remove();
 
       const newWebcamElem = document.createElement("video");
@@ -810,47 +498,43 @@ document.addEventListener("DOMContentLoaded", async () => {
       );
       newWebcamElem.load();
       newWebcamElem.play();
-      // When first time upload video, the facingMode is always "environment"
-      // So we need to flip true ("environment" mode) to draw canvas properly
-      WOSettings.change(
+      setting.change(
         { isFlipCamera: true },
         { isFlipCamera: actionSettings.isFlipCamera }
       );
 
       newWebcamElem.addEventListener("loadeddata", () => {
-        if (WOPose.isVideoMode) {
+        if (pose.isVideoMode) {
           webcamElem = newWebcamElem;
-          WOPose.webcamElem = newWebcamElem;
-          // This is for prepare when to switch to webcam again
-          // eslint-disable-next-line no-underscore-dangle
-          WOPose.camHandler._webcamElement = newWebcamElem;
+          pose.webcamElem = newWebcamElem;
+          pose.camHandler._webcamElement = newWebcamElem;
         }
-        WOPose.counter.resetCount();
+        pose.counter.resetCount();
         countElem.innerText = "0";
         delayElem.innerText = "";
         WOTimer.setup({
           interval: 1000,
-          duration: WOPose.isVideoMode
+          duration: pose.isVideoMode
             ? Math.floor(webcamElem.duration)
-            : 60 * +WOSettings.DBWOSettings.currDuration.split(" ")[0],
+            : 60 * +setting.DBWOSettings.currDuration.split(" ")[0],
           type: "DEC",
-          firstDelayDuration: WOPose.isVideoMode ? 0 : 3,
+          firstDelayDuration: pose.isVideoMode ? 0 : 3,
         });
-        WOTimer.isFirstDelay = !WOPose.isVideoMode;
+        WOTimer.isFirstDelay = !pose.isVideoMode;
         WOTimer.pause();
         setCurrTime();
         webcamElem.pause();
-        WOPose.counter.lastStage = {};
-        WOPose.counter.nextStage = {};
-        if (widthRealVideo !== 0 && WOPose.isVideoMode) {
+        pose.counter.lastStage = {};
+        pose.counter.nextStage = {};
+        if (widthRealVideo !== 0 && pose.isVideoMode) {
           heightRealVideo = newWebcamElem.videoHeight;
           widthRealVideo = newWebcamElem.videoWidth;
         }
-        WOPose.scaler = {
+        pose.scaler = {
           w: widthResult / widthRealVideo,
           h: heightResult / heightRealVideo,
         };
-        WOPose.classifier.stdConfig = {
+        pose.classifier.stdConfig = {
           width: widthRealVideo,
           height: heightRealVideo,
         };
@@ -859,40 +543,28 @@ document.addEventListener("DOMContentLoaded", async () => {
         pauseBtnElem.style.display = "none";
         imgDirectionSignElem.style.display = "none";
         adviceWrapElem.style.display = "none";
-        sliderCameraElem.checked = !WOPose.isVideoMode;
+        sliderCameraElem.checked = !pose.isVideoMode;
       });
-    }
-  });
-
-  // Advice auto show when classifier is running
-  goAdviceBtnElem.addEventListener("click", (event) => {
-    event.preventDefault();
-    WOPose.isShowAdvice = !WOPose.isShowAdvice;
-    sliderAdviceElem.checked = WOPose.isShowAdvice;
-    if (WOPose.isClassify) {
-      adviceWrapElem.style.display = WOPose.isShowAdvice ? "flex" : "none";
     }
   });
 
   goWebcamBtnElem.addEventListener("click", async (event) => {
     event.preventDefault();
-    if (!WOPose.isVideoMode) return;
+    if (!pose.isVideoMode) return;
     widthRealVideo = 640;
     heightRealVideo = 360;
-    // Constraint settings for webcam
-    // eslint-disable-next-line no-underscore-dangle
-    WOPose.camHandler._addVideoConfig = {
+    pose.camHandler._addVideoConfig = {
       width: widthRealVideo,
       height: heightRealVideo,
     };
-    WOPose.classifier.stdConfig = {
+    pose.classifier.stdConfig = {
       width: widthRealVideo,
       height: heightRealVideo,
     };
-    WOPose.isLoop = false;
+    pose.isLoop = false;
     isWebcamSecPlay = true;
     sliderCameraElem.checked = true;
-    WOPose.isVideoMode = false;
-    await WOPose.camHandler.start();
+    pose.isVideoMode = false;
+    await pose.camHandler.start();
   });
 });

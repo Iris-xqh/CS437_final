@@ -1,6 +1,6 @@
-export default class DatasetHandler {
+export default class point {
   constructor() {
-    this.DBKeypoints = [
+    this.keypoint = [
       [
         "nose_x",
         "nose_y",
@@ -41,11 +41,11 @@ export default class DatasetHandler {
   }
 
   addKeypoints = (keypoints) => {
-    this.DBKeypoints.push(keypoints);
+    this.keypoint.push(keypoints);
   };
 
-  saveToCSV = () => {
-    const csvContent = `data:text/csv;charset=utf-8,${this.DBKeypoints.map(
+  save = () => {
+    const csvContent = `data:text/csv;charset=utf-8,${this.keypoint.map(
       (row) => row.join(",")
     ).join("\n")}`;
     const encodedUri = encodeURI(csvContent);
@@ -54,7 +54,7 @@ export default class DatasetHandler {
     link.setAttribute("download", "datasetX.csv");
     document.body.appendChild(link);
     link.click();
-    this.DBKeypoints = [this.DBKeypoints[0]]; // clear
+    this.keypoint = [this.keypoint[0]]; // clear
     document.body.removeChild(link);
   };
 }

@@ -1,15 +1,7 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-underscore-dangle */
-
-// Disclaimer (Modification)
-// Credit: Benson Ruan
-// Repo: https://github.com/bensonruan/webcam-easy/
-// Source file: https://github.com/bensonruan/webcam-easy/blob/master/dist/webcam-easy.js
-
 export default class WebcamHandler {
   constructor(
     webcamElement,
-    facingMode = "user" // environment or user
+    facingMode = "user" 
   ) {
     this._webcamElement = webcamElement;
     this._addVideoConfig = {};
@@ -19,30 +11,9 @@ export default class WebcamHandler {
     this._selectedDeviceId = "";
   }
 
-  get facingMode() {
-    return this._facingMode;
-  }
-
-  set facingMode(value) {
-    this._facingMode = value;
-  }
-
-  get webcamList() {
-    return this._webcamList;
-  }
-
-  get webcamCount() {
-    return this._webcamList.length;
-  }
-
-  get selectedDeviceId() {
-    return this._selectedDeviceId;
-  }
-
-  /* Get all video input devices info */
-  getVideoInputs(mediaDevices) {
+  getVideoInputs(device) {
     this._webcamList = [];
-    mediaDevices.forEach((mediaDevice) => {
+    device.forEach((mediaDevice) => {
       if (mediaDevice.kind === "videoinput") {
         this._webcamList.push(mediaDevice);
       }
@@ -53,26 +24,6 @@ export default class WebcamHandler {
     return this._webcamList;
   }
 
-  /* Get media constraints */
-  getMediaConstraints() {
-    let videoConstraints = {};
-    if (this._selectedDeviceId === "") {
-      videoConstraints.facingMode = this._facingMode;
-    } else {
-      videoConstraints.deviceId = { exact: this._selectedDeviceId };
-    }
-    videoConstraints = {
-      ...videoConstraints,
-      ...this._addVideoConfig,
-    };
-    const constraints = {
-      video: videoConstraints,
-      audio: false,
-    };
-    return constraints;
-  }
-
-  /* Select camera based on facingMode */
   selectCamera() {
     for (const webcam of this._webcamList) {
       if (
@@ -87,35 +38,17 @@ export default class WebcamHandler {
     }
   }
 
-  /* Change Facing mode and selected camera */
-  flip(mode) {
-    // this._facingMode = this._facingMode === "user" ? "environment" : "user";
-    this._facingMode = mode;
-    // this._webcamElement.style.transform = "";
-    if (this._facingMode === "user") {
-      this._webcamElement.style.transform = "scale(-1,1)";
-    } else {
-      this._webcamElement.style.transform = "";
-    }
-    this.selectCamera();
-  }
 
-  /*
-    1. Get permission from user
-    2. Get all video input devices info
-    3. Select camera based on facingMode 
-    4. Start stream
-  */
+
   async start(startStream = true) {
     return new Promise((resolve, reject) => {
       this.stop();
       navigator.mediaDevices
-        .getUserMedia(this.getMediaConstraints()) // get permisson from user
         .then((stream) => {
           this._streamList.push(stream);
-          this.info() // get all video input devices info
+          this.info() 
             .then(() => {
-              this.selectCamera(); // select camera based on facingMode
+              this.selectCamera(); 
               if (startStream) {
                 this.stream()
                   .then(() => {
@@ -138,22 +71,6 @@ export default class WebcamHandler {
     });
   }
 
-  /* Get all video input devices info */
-  async info() {
-    return new Promise((resolve, reject) => {
-      navigator.mediaDevices
-        .enumerateDevices()
-        .then((devices) => {
-          this.getVideoInputs(devices);
-          resolve(this._webcamList);
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
-  }
-
-  /* Start streaming webcam to video element */
   async stream() {
     return new Promise((resolve, reject) => {
       navigator.mediaDevices
@@ -174,12 +91,4 @@ export default class WebcamHandler {
     });
   }
 
-  /* Stop streaming webcam */
-  stop() {
-    this._streamList.forEach((stream) => {
-      stream.getTracks().forEach((track) => {
-        track.stop();
-      });
-    });
-  }
 }
